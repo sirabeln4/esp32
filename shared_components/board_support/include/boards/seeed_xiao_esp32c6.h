@@ -1,0 +1,9 @@
+#pragma once
+
+#define BOARD_NAME "Seeed Studio XIAO ESP32-C6"
+#define BOARD_I2C_SDA_GPIO 22
+#define BOARD_I2C_SCL_GPIO 23
+#define BOARD_BOOT_BUTTON_GPIO 9
+#define BOARD_USER_LIGHT_GPIO 15
+#define BOARD_HAS_SIMPLE_STATUS_LED 1
+

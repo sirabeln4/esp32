@@ -1,0 +1,8 @@
+#pragma once
+
+#define BOARD_NAME "Espressif ESP32-DevKitC V4"
+#define BOARD_I2C_SDA_GPIO 21
+#define BOARD_I2C_SCL_GPIO 22
+#define BOARD_BOOT_BUTTON_GPIO 0
+#define BOARD_HAS_SIMPLE_STATUS_LED 0
+

@@ -1,0 +1,25 @@
+# ESP-IDF generated files (at any project depth)
+**/build/
+**/build-*/
+**/sdkconfig
+**/sdkconfig.old
+**/sdkconfig.*.old
+
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+secrets.*
+credentials.*
+
+# Editors and operating systems
+.vscode/
+*.code-workspace
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+

@@ -1,0 +1,3 @@
+# Settings shared by all supported targets and boards.
+CONFIG_ESPTOOLPY_MONITOR_BAUD=115200
+
