@@ -1,0 +1,22 @@
+menu "Wi-Fi connection test"
+
+config WIFI_TEST_SSID
+    string "Wi-Fi network name (SSID)"
+    default ""
+    help
+        The network to join after the scan test. This value is saved only in
+        the selected build directory's sdkconfig, which is ignored by Git.
+
+config WIFI_TEST_PASSWORD
+    string "Wi-Fi password"
+    default ""
+    help
+        The WPA/WPA2/WPA3 password for the selected network. Leave empty only
+        for an open network. This value is saved only in the ignored sdkconfig.
+
+config WIFI_TEST_MAXIMUM_RETRY
+    int "Maximum connection retries"
+    range 1 20
+    default 5
+
+endmenu
