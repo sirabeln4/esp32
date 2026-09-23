@@ -1,0 +1,67 @@
+menu "Wi-Fi connection settings"
+
+config WIFI_TEST_SSID
+    string "Wi-Fi network name (SSID)"
+    default ""
+    help
+        Stored only in this board profile's generated sdkconfig, which Git ignores.
+
+config WIFI_TEST_PASSWORD
+    string "Wi-Fi password"
+    default ""
+    help
+        Stored only in this board profile's generated sdkconfig, which Git ignores.
+
+config WIFI_TEST_MAXIMUM_RETRY
+    int "Maximum connection retries"
+    range 1 20
+    default 5
+
+endmenu
+
+menu "Home Assistant MQTT settings"
+
+config SENSOR_MQTT_BROKER_URI
+    string "MQTT broker URI"
+    default "mqtt://192.168.86.50:1883"
+    help
+        The Mosquitto broker on the Home Assistant Raspberry Pi. Use mqtt://
+        for the local, password-protected broker on port 1883.
+
+config SENSOR_MQTT_USERNAME
+    string "MQTT username"
+    default "esp32_sensor"
+    help
+        The dedicated non-administrator Home Assistant user created for this
+        sensor device.
+
+config SENSOR_MQTT_PASSWORD
+    string "MQTT password"
+    default ""
+    help
+        Password for the MQTT username. Stored only in the generated sdkconfig,
+        which Git ignores. Do not put this password in source files.
+
+config SENSOR_MQTT_DEVICE_ID
+    string "MQTT device ID"
+    default "esp32c6_sensor_device"
+    help
+        A short, lower-case identifier used in MQTT topics and Home Assistant
+        unique IDs. Keep it unchanged once Home Assistant discovers the device.
+
+config SENSOR_MQTT_DEVICE_NAME
+    string "Home Assistant device name"
+    default "Room Sensor"
+    help
+        Friendly name shown for the device in Home Assistant. This is separate
+        from the MQTT device ID, so it can be changed without changing topics.
+
+config SENSOR_MQTT_PUBLISH_INTERVAL_SECONDS
+    int "Sensor publish interval (seconds)"
+    range 5 3600
+    default 30
+    help
+        How often the current temperature, humidity, and light values are sent
+        to Home Assistant after the first valid readings are available.
+
+endmenu

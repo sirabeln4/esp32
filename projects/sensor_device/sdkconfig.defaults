@@ -1,0 +1,2 @@
+# Application-specific defaults for sensor_device belong here.
+CONFIG_PARTITION_TABLE_CUSTOM=y

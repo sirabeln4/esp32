@@ -1,4 +1,5 @@
 #include "board.h"
+#include "driver/i2c_master.h"
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_http_server.h"
@@ -23,6 +24,55 @@ static EventGroupHandle_t wifi_event_group;
 static int connection_attempts;
 static bool wifi_is_stopping;
 static esp_ip4_addr_t station_ip;
+
+static const char *i2c_device_name(uint8_t address)
+{
+    switch (address) {
+    case 0x10:
+        return "VEML7700 ambient-light sensor";
+    case 0x3C:
+    case 0x3D:
+        return "SSD1306 OLED display";
+    case 0x44:
+        return "SHT41 temperature/humidity sensor";
+    default:
+        return "unknown device";
+    }
+}
+
+static void scan_i2c_bus(void)
+{
+    const i2c_master_bus_config_t bus_config = {
+        .i2c_port = I2C_NUM_0,
+        .sda_io_num = BOARD_I2C_SDA_GPIO,
+        .scl_io_num = BOARD_I2C_SCL_GPIO,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    i2c_master_bus_handle_t bus_handle;
+    ESP_ERROR_CHECK(i2c_new_master_bus(&bus_config, &bus_handle));
+
+    ESP_LOGI(TAG,
+             "Scanning I2C bus: SDA GPIO%d, SCL GPIO%d",
+             BOARD_I2C_SDA_GPIO,
+             BOARD_I2C_SCL_GPIO);
+    uint8_t devices_found = 0;
+    for (uint8_t address = 0x08; address <= 0x77; ++address) {
+        if (i2c_master_probe(bus_handle, address, 20) == ESP_OK) {
+            ESP_LOGI(TAG, "I2C device at 0x%02X: %s", address, i2c_device_name(address));
+            devices_found++;
+        }
+    }
+
+    if (devices_found == 0) {
+        ESP_LOGW(TAG, "No I2C devices found; check 3V3, GND, SDA, and SCL wiring");
+    } else {
+        ESP_LOGI(TAG, "I2C scan complete: %u device%s found", devices_found,
+                 devices_found == 1 ? "" : "s");
+    }
+    ESP_ERROR_CHECK(i2c_del_master_bus(bus_handle));
+}
 
 static void init_nvs(void)
 {
@@ -99,6 +149,7 @@ void app_main(void)
              BOARD_I2C_SDA_GPIO,
              BOARD_I2C_SCL_GPIO);
 
+    scan_i2c_bus();
     init_nvs();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
