@@ -63,6 +63,18 @@ battery black -> pigtail black -> XIAO BAT-
 Connector names and wire colors in online listings are not a substitute for a
 polarity check.
 
+### XIAO battery-voltage measurement
+
+The XIAO ESP32-C6 does not provide a usable battery percentage from the battery
+pads alone. For the firmware's `BAT` display, add the documented **200 kΩ, 1:2
+voltage divider** from the battery-voltage test point to the XIAO `A0` pin,
+with the lower resistor connected to GND. This keeps the ADC input within its
+safe range. The firmware converts approximately 3.30-4.20 V into 0-100%; it
+is an estimate, not a fuel gauge, and will vary with load and battery age.
+
+See Seeed's [XIAO ESP32-C6 battery-voltage guidance](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/).
+Do not connect the raw LiPo voltage directly to an ESP32 GPIO or ADC input.
+
 ### Charging paths
 
 ```text

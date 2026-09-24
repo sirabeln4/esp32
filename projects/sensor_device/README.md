@@ -44,6 +44,17 @@ that port:
 .\scripts\build.ps1 -Project sensor_device -Board seeed_xiao_esp32c6 -Port COM5 -Flash -Monitor
 ```
 
+When the XIAO is running from its LiPo, the OLED also shows an approximate
+`BAT` percentage. Battery measurement requires the XIAO's documented 200 kΩ
+1:2 voltage-divider resistor connected to A0; do not connect the battery
+directly to an ESP32 ADC pin. The firmware enables this feature for the XIAO
+profile and leaves it disabled for the DevKitC-1.
+
+If the XIAO cannot reach Wi-Fi, the sensor readings continue on the OLED and
+the status line changes to `OFFLINE`. It retries the connection every three
+minutes. The browser and MQTT services become available automatically after a
+later connection succeeds.
+
 Each board has its own `build-<board>` directory and generated `sdkconfig`,
 so Wi-Fi and MQTT settings remain separate. Run `-Menuconfig` once for each
 board before its first flash. If switching after an older build exists, use

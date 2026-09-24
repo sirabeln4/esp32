@@ -6,4 +6,4 @@
 #define BOARD_BOOT_BUTTON_GPIO 0
 /* RGB LED GPIO varies on some revisions, so verify it before enabling. */
 #define BOARD_HAS_SIMPLE_STATUS_LED 0
-
+#define BOARD_HAS_BATTERY_MONITOR 0

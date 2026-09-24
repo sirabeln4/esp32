@@ -19,6 +19,11 @@ needed to use its readings in Home Assistant.
   printed to the serial monitor.
 - Wi-Fi credentials are configured through `menuconfig` and the project has a
   working local HTTP status page.
+- The OLED continues showing sensor readings while Wi-Fi is unavailable. It
+  shows `OFFLINE` and retries the connection every three minutes.
+- The XIAO profile can show an approximate LiPo percentage after its required
+  200 kΩ 1:2 A0 voltage divider is fitted. The DevKit profile leaves battery
+  monitoring disabled.
 - The board profile selects `partitions_8mb.csv` for the DevKitC-1 N8 and
   `partitions_4mb.csv` for the XIAO. Each provides one large factory
   application partition required by the MQTT-enabled firmware. The current

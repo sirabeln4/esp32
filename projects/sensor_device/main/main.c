@@ -1,4 +1,5 @@
 #include "board.h"
+#include "esp_adc/adc_oneshot.h"
 #include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_err.h"
@@ -30,6 +31,7 @@ static const char *TAG = "sensor_device";
 #define WIFI_CONNECTED_BIT        BIT0
 #define WIFI_FAILED_BIT           BIT1
 #define SENSOR_UPDATE_PERIOD_MS   2000
+#define WIFI_RETRY_DELAY_MS       (3U * 60U * 1000U)
 #define MQTT_QOS                  1
 #define OLED_SSID_MAX_CHARS       8
 
@@ -49,6 +51,13 @@ static bool readings_valid;
 static bool light_reading_valid;
 static bool mqtt_connected;
 static bool time_sync_started;
+static float latest_battery_percent;
+static bool battery_reading_valid;
+
+#if BOARD_HAS_BATTERY_MONITOR && CONFIG_SENSOR_BATTERY_MONITOR
+static adc_oneshot_unit_handle_t battery_adc;
+static bool battery_adc_ready;
+#endif
 
 #define MQTT_BASE_TOPIC           "home/" CONFIG_SENSOR_MQTT_DEVICE_ID
 #define MQTT_STATE_TOPIC          MQTT_BASE_TOPIC "/state"
@@ -184,6 +193,46 @@ static esp_err_t read_veml7700(float *lux)
     return ESP_OK;
 }
 
+#if BOARD_HAS_BATTERY_MONITOR && CONFIG_SENSOR_BATTERY_MONITOR
+static void init_battery_monitor(void)
+{
+    const adc_oneshot_unit_init_cfg_t unit_config = {
+        .unit_id = ADC_UNIT_1,
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+    const adc_oneshot_chan_cfg_t channel_config = {
+        .atten = ADC_ATTEN_DB_12,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&unit_config, &battery_adc));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(battery_adc, ADC_CHANNEL_0, &channel_config));
+    battery_adc_ready = true;
+}
+
+static void read_battery_percent(void)
+{
+    if (!battery_adc_ready) {
+        return;
+    }
+
+    int raw = 0;
+    if (adc_oneshot_read(battery_adc, ADC_CHANNEL_0, &raw) != ESP_OK) {
+        return;
+    }
+
+    /* A0 is fed by the documented 1:2 divider: 200k from BAT and 200k to GND. */
+    const float battery_voltage = ((float)raw * 3.3f / 4095.0f) * 2.0f;
+    float percent = (battery_voltage - 3.30f) * (100.0f / 0.90f);
+    if (percent < 0.0f) {
+        percent = 0.0f;
+    } else if (percent > 100.0f) {
+        percent = 100.0f;
+    }
+    latest_battery_percent = percent;
+    battery_reading_valid = true;
+}
+#endif
+
 static const uint8_t *glyph_for(char character)
 {
     static const uint8_t blank[] = {0x00, 0x00, 0x00, 0x00, 0x00};
@@ -249,7 +298,7 @@ static void format_status_line(char *status_line, size_t status_line_size)
         snprintf(ssid, sizeof(ssid), "%.*s", OLED_SSID_MAX_CHARS, (char *)access_point.ssid);
         snprintf(status_line, status_line_size, "%s %s %d", time_text, ssid, access_point.rssi);
     } else {
-        snprintf(status_line, status_line_size, "%s NO WIFI", time_text);
+        snprintf(status_line, status_line_size, "%s OFFLINE", time_text);
     }
 }
 
@@ -298,14 +347,21 @@ static void render_readings(float temperature_f, float humidity_percent, float l
     char temperature_line[22];
     char humidity_line[22];
     char lux_line[22];
+    char battery_line[22];
     format_status_line(status_line, sizeof(status_line));
     snprintf(temperature_line, sizeof(temperature_line), "TEMP: %.1f F", temperature_f);
     snprintf(humidity_line, sizeof(humidity_line), "HUM : %.1f%%", humidity_percent);
     snprintf(lux_line, sizeof(lux_line), "LUX : %.1f", lux);
+    if (battery_reading_valid) {
+        snprintf(battery_line, sizeof(battery_line), "BAT : %.0f%%", latest_battery_percent);
+    } else {
+        snprintf(battery_line, sizeof(battery_line), "BAT : --");
+    }
     oled_draw_text(framebuffer, 0, status_line);
     oled_draw_text(framebuffer, 2, temperature_line);
     oled_draw_text(framebuffer, 4, humidity_line);
     oled_draw_text(framebuffer, 6, lux_line);
+    oled_draw_text(framebuffer, 7, battery_line);
     oled_write_framebuffer(framebuffer);
 }
 
@@ -441,6 +497,9 @@ static void sensor_task(void *argument)
         if (veml7700_device != NULL && read_veml7700(&latest_lux) == ESP_OK) {
             light_reading_valid = true;
         }
+#if BOARD_HAS_BATTERY_MONITOR && CONFIG_SENSOR_BATTERY_MONITOR
+        read_battery_percent();
+#endif
         if (oled_device != NULL && readings_valid && light_reading_valid) {
             render_readings(latest_temperature_f, latest_humidity_percent, latest_lux);
         }
@@ -496,6 +555,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         if (wifi_is_stopping) {
             return;
         }
+        xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         if (connection_attempts < CONFIG_WIFI_TEST_MAXIMUM_RETRY) {
             connection_attempts++;
             ESP_LOGW(TAG, "Wi-Fi disconnected; retrying (%d/%d)", connection_attempts,
@@ -542,16 +602,27 @@ static void connect_wifi_and_start_server(void)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &station_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    EventBits_t result = xEventGroupWaitBits(wifi_event_group,
-                                             WIFI_CONNECTED_BIT | WIFI_FAILED_BIT,
-                                             pdFALSE, pdFALSE, portMAX_DELAY);
-    if (result & WIFI_CONNECTED_BIT) {
-        start_web_server();
-        ESP_LOGI(TAG, "Open http://" IPSTR "/ in a browser", IP2STR(&station_ip));
-        start_time_synchronization();
-        start_mqtt_client();
-    } else {
-        ESP_LOGE(TAG, "Could not connect to Wi-Fi");
+    bool services_started = false;
+    while (true) {
+        EventBits_t result = xEventGroupWaitBits(wifi_event_group,
+                                                 WIFI_CONNECTED_BIT | WIFI_FAILED_BIT,
+                                                 pdTRUE, pdFALSE, portMAX_DELAY);
+        if (result & WIFI_CONNECTED_BIT) {
+            connection_attempts = 0;
+            if (!services_started) {
+                start_web_server();
+                ESP_LOGI(TAG, "Open http://" IPSTR "/ in a browser", IP2STR(&station_ip));
+                start_time_synchronization();
+                start_mqtt_client();
+                services_started = true;
+            }
+        }
+        if (result & WIFI_FAILED_BIT) {
+            ESP_LOGW(TAG, "Wi-Fi offline; sensor display continues. Retrying in 3 minutes");
+            connection_attempts = 0;
+            vTaskDelay(pdMS_TO_TICKS(WIFI_RETRY_DELAY_MS));
+            ESP_ERROR_CHECK(esp_wifi_connect());
+        }
     }
 }
 
@@ -583,6 +654,10 @@ void app_main(void)
         oled_device = add_i2c_device(oled_address);
         init_oled();
     }
+
+#if BOARD_HAS_BATTERY_MONITOR && CONFIG_SENSOR_BATTERY_MONITOR
+    init_battery_monitor();
+#endif
 
     if (sht41_device != NULL) {
         xTaskCreate(sensor_task, "sensor_task", 4096, NULL, 5, NULL);

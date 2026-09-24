@@ -19,6 +19,18 @@ config WIFI_TEST_MAXIMUM_RETRY
 
 endmenu
 
+menu "Battery display settings"
+
+config SENSOR_BATTERY_MONITOR
+    bool "Enable XIAO battery percentage"
+    default n
+    help
+        Enable only when using a Seeed Studio XIAO ESP32-C6 with the required
+        200k resistor voltage divider connected to A0. The voltage is shown on
+        the OLED as an approximate LiPo percentage.
+
+endmenu
+
 menu "Home Assistant MQTT settings"
 
 config SENSOR_MQTT_BROKER_URI

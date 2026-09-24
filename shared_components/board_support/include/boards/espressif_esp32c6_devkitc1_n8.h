@@ -7,4 +7,4 @@
 /* The onboard GPIO8 LED is addressable RGB, not a simple GPIO LED. */
 #define BOARD_RGB_LED_GPIO 8
 #define BOARD_HAS_SIMPLE_STATUS_LED 0
-
+#define BOARD_HAS_BATTERY_MONITOR 0
