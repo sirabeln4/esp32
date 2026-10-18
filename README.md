@@ -32,6 +32,8 @@ Run these commands from an activated ESP-IDF PowerShell terminal.
 
 ## Documentation
 
+- [projects/ir_receiver/README.md](projects/ir_receiver/README.md): VS1838B IR capture and NEC decoding on the XIAO ESP32-C6
+
 - [GETTING_STARTED.md](GETTING_STARTED.md): installation, builds, flashing, and adding a board
 - [PROJECT_LAYOUT.md](PROJECT_LAYOUT.md): architecture and file ownership
 - [docs/HOME_SENSOR_PROJECT_PLAN.md](docs/HOME_SENSOR_PROJECT_PLAN.md): the existing sensor-system plan carried forward as a reference
@@ -50,4 +52,3 @@ git push -u origin main
 
 Review `git status` before committing. Generated builds, generated `sdkconfig`
 files, editor settings, and common secret files are excluded by `.gitignore`.
-

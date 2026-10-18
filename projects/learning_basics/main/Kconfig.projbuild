@@ -1,0 +1,10 @@
+menu "Learning application settings"
+
+    config LEARNING_INTERVAL_MS
+        int "Counter interval in milliseconds"
+        range 100 10000
+        default 1000
+        help
+            Time between counter messages.
+
+endmenu

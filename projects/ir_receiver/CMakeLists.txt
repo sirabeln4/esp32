@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+include("${CMAKE_CURRENT_LIST_DIR}/../../cmake/project_setup.cmake")
+if(NOT BOARD STREQUAL "seeed_xiao_esp32c6")
+    message(FATAL_ERROR "ir_receiver wiring requires BOARD=seeed_xiao_esp32c6")
+endif()
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(ir_receiver)

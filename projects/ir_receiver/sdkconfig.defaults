@@ -1,0 +1,2 @@
+# Console over the XIAO's native USB connection.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
